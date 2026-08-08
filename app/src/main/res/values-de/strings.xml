@@ -848,6 +848,8 @@
     <string name="button_apply_setting">Einstellung anwenden</string>
     <string name="dialog_adjust_coffee_in">Kaffeemenge anpassen</string>
     <string name="text_enter_coffee_in_amount">Geben Sie die Menge an Kaffeepulver ein (in Gramm)</string>
+    <string name="dialog_adjust_coffee_out">Kaffeemenge anpassen</string>
+    <string name="text_enter_coffee_out_amount">Geben Sie die extrahierte Menge ein (in Gramm)</string>
     <string name="dialog_adjust_extraction_time">Extraktionszeit einstellen</string>
     <string name="text_enter_extraction_time">Geben Sie die Extraktionszeit in Sekunden ein</string>
     <string name="validation_time_too_low">Zeit muss mindestens %1$d Sekunden betragen</string>
@@ -857,6 +859,8 @@
     <string name="validation_invalid_number">Bitte geben Sie eine gültige Zahl ein</string>
     <string name="validation_coffee_in_too_low">Kaffeemenge muss mindestens %1$dg betragen</string>
     <string name="validation_coffee_in_too_high">Kaffeemenge kann nicht mehr als %1$dg betragen</string>
+    <string name="validation_coffee_out_too_low">Kaffeemenge muss mindestens %1$dg betragen</string>
+    <string name="validation_coffee_out_too_high">Kaffeemenge kann nicht mehr als %1$dg betragen</string>
 
     <!-- Shot Recorded Dialog - Grind Adjustment Feedback -->
     <string name="feedback_shot_ran_fast">Shot lief zu schnell – Mahlgrad anpassen</string>

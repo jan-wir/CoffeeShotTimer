@@ -2,6 +2,7 @@ package com.jodli.coffeeshottimer.ui.screens
 
 import android.content.res.Configuration
 import android.view.HapticFeedbackConstants
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -62,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jodli.coffeeshottimer.R
 import com.jodli.coffeeshottimer.data.model.Bean
+import com.jodli.coffeeshottimer.data.model.Shot
 import com.jodli.coffeeshottimer.domain.model.PersistentGrindRecommendation
 import com.jodli.coffeeshottimer.domain.usecase.TimerMode
 import com.jodli.coffeeshottimer.domain.usecase.TimerState
@@ -85,7 +87,7 @@ import java.time.temporal.ChronoUnit
  * - Integration with ShotRecordingViewModel
  * - Bean-specific settings and recommendations
  * - Grinder adjustment with user configuration
- * - Coffee weight validation based on basket configuration
+ * - Coffee weights entered by stepper or keyboard, bounded only by the Shot domain limits
  * - Haptic feedback for timer controls
  * - Landscape orientation support with optimized layout
  */
@@ -113,11 +115,9 @@ fun RecordShotScreen(
     val grinderMax by viewModel.grinderScaleMax.collectAsState()
     val grinderStep by viewModel.grinderStepSize.collectAsState()
 
-    // Basket configuration
+    // Basket configuration - used only to seed sensible defaults, never to cap entry
     val basketCoffeeInMin by viewModel.basketCoffeeInMin.collectAsState()
-    val basketCoffeeInMax by viewModel.basketCoffeeInMax.collectAsState()
     val basketCoffeeOutMin by viewModel.basketCoffeeOutMin.collectAsState()
-    val basketCoffeeOutMax by viewModel.basketCoffeeOutMax.collectAsState()
 
     // Timer mode state
     val timerMode by viewModel.timerMode.collectAsState()
@@ -126,6 +126,7 @@ fun RecordShotScreen(
     // UI state
     var showGrinderSheet by remember { mutableStateOf(false) }
     var showCoffeeInDialog by remember { mutableStateOf(false) }
+    var showCoffeeOutDialog by remember { mutableStateOf(false) }
     var showManualTimeDialog by remember { mutableStateOf(false) }
 
     // Refresh current bean when screen becomes visible
@@ -143,12 +144,11 @@ fun RecordShotScreen(
         manualTimeSeconds = manualTimeSeconds,
         coffeeWeightIn = coffeeWeightIn,
         coffeeWeightOut = coffeeWeightOut,
-        basketCoffeeOutMin = basketCoffeeOutMin,
-        basketCoffeeOutMax = basketCoffeeOutMax,
         isFormValid = isFormValid,
         onNavigateToBeanManagement = onNavigateToBeanManagement,
         onShowGrinderSheet = { showGrinderSheet = true },
         onShowCoffeeInDialog = { showCoffeeInDialog = true },
+        onShowCoffeeOutDialog = { showCoffeeOutDialog = true },
         onToggleTimerMode = { viewModel.toggleTimerMode() },
         onManualTimeChange = { newTime -> viewModel.setManualTime(newTime) },
         onShowManualTimeDialog = { showManualTimeDialog = true },
@@ -182,14 +182,37 @@ fun RecordShotScreen(
 
     // Coffee In adjustment dialog
     if (showCoffeeInDialog) {
-        CoffeeInDialog(
+        WeightInputDialog(
+            titleRes = R.string.dialog_adjust_coffee_in,
+            descriptionRes = R.string.text_enter_coffee_in_amount,
+            labelRes = R.string.label_coffee_in,
+            tooLowRes = R.string.validation_coffee_in_too_low,
+            tooHighRes = R.string.validation_coffee_in_too_high,
             currentValue = coffeeWeightIn.toDoubleOrNull() ?: basketCoffeeInMin.toDouble(),
-            minValue = basketCoffeeInMin,
-            maxValue = basketCoffeeInMax,
+            minValue = ValidationUtils.MIN_WEIGHT_ENTRY,
+            maxValue = Shot.MAX_COFFEE_WEIGHT_IN,
             onValueChange = { newValue ->
                 viewModel.updateCoffeeWeightIn(newValue.toInt().toString())
             },
             onDismiss = { showCoffeeInDialog = false }
+        )
+    }
+
+    // Coffee Out adjustment dialog
+    if (showCoffeeOutDialog) {
+        WeightInputDialog(
+            titleRes = R.string.dialog_adjust_coffee_out,
+            descriptionRes = R.string.text_enter_coffee_out_amount,
+            labelRes = R.string.label_coffee_out,
+            tooLowRes = R.string.validation_coffee_out_too_low,
+            tooHighRes = R.string.validation_coffee_out_too_high,
+            currentValue = coffeeWeightOut.toDoubleOrNull() ?: basketCoffeeOutMin.toDouble(),
+            minValue = ValidationUtils.MIN_WEIGHT_ENTRY,
+            maxValue = Shot.MAX_COFFEE_WEIGHT_OUT,
+            onValueChange = { newValue ->
+                viewModel.updateCoffeeWeightOut(newValue.toInt().toString())
+            },
+            onDismiss = { showCoffeeOutDialog = false }
         )
     }
 
@@ -246,12 +269,11 @@ private fun RecordShotScreenContent(
     manualTimeSeconds: Int,
     coffeeWeightIn: String,
     coffeeWeightOut: String,
-    basketCoffeeOutMin: Float,
-    basketCoffeeOutMax: Float,
     isFormValid: Boolean,
     onNavigateToBeanManagement: () -> Unit,
     onShowGrinderSheet: () -> Unit,
     onShowCoffeeInDialog: () -> Unit,
+    onShowCoffeeOutDialog: () -> Unit,
     onToggleTimerMode: () -> Unit,
     onManualTimeChange: (Int) -> Unit,
     onShowManualTimeDialog: () -> Unit,
@@ -275,12 +297,11 @@ private fun RecordShotScreenContent(
             manualTimeSeconds = manualTimeSeconds,
             coffeeWeightIn = coffeeWeightIn,
             coffeeWeightOut = coffeeWeightOut,
-            basketCoffeeOutMin = basketCoffeeOutMin,
-            basketCoffeeOutMax = basketCoffeeOutMax,
             isFormValid = isFormValid,
             onNavigateToBeanManagement = onNavigateToBeanManagement,
             onShowGrinderSheet = onShowGrinderSheet,
             onShowCoffeeInDialog = onShowCoffeeInDialog,
+            onShowCoffeeOutDialog = onShowCoffeeOutDialog,
             onToggleTimerMode = onToggleTimerMode,
             onManualTimeChange = onManualTimeChange,
             onShowManualTimeDialog = onShowManualTimeDialog,
@@ -301,12 +322,11 @@ private fun RecordShotScreenContent(
             manualTimeSeconds = manualTimeSeconds,
             coffeeWeightIn = coffeeWeightIn,
             coffeeWeightOut = coffeeWeightOut,
-            basketCoffeeOutMin = basketCoffeeOutMin,
-            basketCoffeeOutMax = basketCoffeeOutMax,
             isFormValid = isFormValid,
             onNavigateToBeanManagement = onNavigateToBeanManagement,
             onShowGrinderSheet = onShowGrinderSheet,
             onShowCoffeeInDialog = onShowCoffeeInDialog,
+            onShowCoffeeOutDialog = onShowCoffeeOutDialog,
             onToggleTimerMode = onToggleTimerMode,
             onManualTimeChange = onManualTimeChange,
             onShowManualTimeDialog = onShowManualTimeDialog,
@@ -333,12 +353,11 @@ private fun RecordShotScreenPortrait(
     manualTimeSeconds: Int,
     coffeeWeightIn: String,
     coffeeWeightOut: String,
-    basketCoffeeOutMin: Float,
-    basketCoffeeOutMax: Float,
     isFormValid: Boolean,
     onNavigateToBeanManagement: () -> Unit,
     onShowGrinderSheet: () -> Unit,
     onShowCoffeeInDialog: () -> Unit,
+    onShowCoffeeOutDialog: () -> Unit,
     onToggleTimerMode: () -> Unit,
     onManualTimeChange: (Int) -> Unit,
     onShowManualTimeDialog: () -> Unit,
@@ -405,15 +424,12 @@ private fun RecordShotScreenPortrait(
                 coffeeIn = coffeeWeightIn.toDoubleOrNull() ?: 0.0,
                 coffeeOut = coffeeWeightOut.toDoubleOrNull() ?: 0.0,
                 onCoffeeInClick = onShowCoffeeInDialog,
+                onCoffeeOutClick = onShowCoffeeOutDialog,
                 onCoffeeOutDecrease = {
-                    val current = coffeeWeightOut.toDoubleOrNull() ?: 0.0
-                    val newValue = (current - 1).coerceAtLeast(basketCoffeeOutMin.toDouble())
-                    onUpdateCoffeeWeightOut(newValue.toInt().toString())
+                    onUpdateCoffeeWeightOut(steppedCoffeeWeightOut(coffeeWeightOut, -1))
                 },
                 onCoffeeOutIncrease = {
-                    val current = coffeeWeightOut.toDoubleOrNull() ?: 0.0
-                    val newValue = (current + 1).coerceAtMost(basketCoffeeOutMax.toDouble())
-                    onUpdateCoffeeWeightOut(newValue.toInt().toString())
+                    onUpdateCoffeeWeightOut(steppedCoffeeWeightOut(coffeeWeightOut, +1))
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -437,11 +453,6 @@ private fun RecordShotScreenPortrait(
 }
 
 /**
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 3ac2b45 (feat: add landscape mode to new shot screen)
  * Landscape layout for RecordShotScreen.
  * Horizontal layout with timer on the left and controls on the right.
  */
@@ -455,12 +466,11 @@ private fun RecordShotScreenLandscape(
     manualTimeSeconds: Int,
     coffeeWeightIn: String,
     coffeeWeightOut: String,
-    basketCoffeeOutMin: Float,
-    basketCoffeeOutMax: Float,
     isFormValid: Boolean,
     onNavigateToBeanManagement: () -> Unit,
     onShowGrinderSheet: () -> Unit,
     onShowCoffeeInDialog: () -> Unit,
+    onShowCoffeeOutDialog: () -> Unit,
     onToggleTimerMode: () -> Unit,
     onManualTimeChange: (Int) -> Unit,
     onShowManualTimeDialog: () -> Unit,
@@ -534,15 +544,12 @@ private fun RecordShotScreenLandscape(
                     coffeeIn = coffeeWeightIn.toDoubleOrNull() ?: 0.0,
                     coffeeOut = coffeeWeightOut.toDoubleOrNull() ?: 0.0,
                     onCoffeeInClick = onShowCoffeeInDialog,
+                    onCoffeeOutClick = onShowCoffeeOutDialog,
                     onCoffeeOutDecrease = {
-                        val current = coffeeWeightOut.toDoubleOrNull() ?: 0.0
-                        val newValue = (current - 1).coerceAtLeast(basketCoffeeOutMin.toDouble())
-                        onUpdateCoffeeWeightOut(newValue.toInt().toString())
+                        onUpdateCoffeeWeightOut(steppedCoffeeWeightOut(coffeeWeightOut, -1))
                     },
                     onCoffeeOutIncrease = {
-                        val current = coffeeWeightOut.toDoubleOrNull() ?: 0.0
-                        val newValue = (current + 1).coerceAtMost(basketCoffeeOutMax.toDouble())
-                        onUpdateCoffeeWeightOut(newValue.toInt().toString())
+                        onUpdateCoffeeWeightOut(steppedCoffeeWeightOut(coffeeWeightOut, +1))
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -566,10 +573,6 @@ private fun RecordShotScreenLandscape(
 }
 
 /**
-<<<<<<< HEAD
->>>>>>> c03d903 (fixup! chore: fix detekt issues)
-=======
->>>>>>> 3ac2b45 (feat: add landscape mode to new shot screen)
  * Header section with bean selector and grinder setting.
  */
 @Composable
@@ -991,13 +994,21 @@ private fun GrinderAdjustmentBottomSheet(
 }
 
 /**
- * Coffee In adjustment dialog.
+ * Keyboard entry dialog for one of the shot weights (coffee in / coffee out).
+ *
+ * Bounds come from the [Shot] domain limits, never from the user's basket configuration -
+ * the basket range describes a typical basket, not the set of shots a user may record.
  */
 @Composable
-private fun CoffeeInDialog(
+private fun WeightInputDialog(
+    @StringRes titleRes: Int,
+    @StringRes descriptionRes: Int,
+    @StringRes labelRes: Int,
+    @StringRes tooLowRes: Int,
+    @StringRes tooHighRes: Int,
     currentValue: Double,
-    minValue: Float,
-    maxValue: Float,
+    minValue: Double,
+    maxValue: Double,
     onValueChange: (Double) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -1008,7 +1019,7 @@ private fun CoffeeInDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = stringResource(R.string.dialog_adjust_coffee_in),
+                text = stringResource(titleRes),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -1016,7 +1027,7 @@ private fun CoffeeInDialog(
         text = {
             Column {
                 Text(
-                    text = stringResource(R.string.text_enter_coffee_in_amount),
+                    text = stringResource(descriptionRes),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1036,7 +1047,7 @@ private fun CoffeeInDialog(
                             else -> null
                         }
                     },
-                    label = { Text(stringResource(R.string.label_coffee_in)) },
+                    label = { Text(stringResource(labelRes)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     isError = errorMessage != null,
@@ -1045,11 +1056,8 @@ private fun CoffeeInDialog(
                             Text(
                                 when (it) {
                                     "invalid" -> stringResource(R.string.validation_invalid_number)
-                                    "too_low" -> stringResource(R.string.validation_coffee_in_too_low, minValue.toInt())
-                                    "too_high" -> stringResource(
-                                        R.string.validation_coffee_in_too_high,
-                                        maxValue.toInt()
-                                    )
+                                    "too_low" -> stringResource(tooLowRes, minValue.toInt())
+                                    "too_high" -> stringResource(tooHighRes, maxValue.toInt())
                                     else -> it
                                 }
                             )
@@ -1063,7 +1071,7 @@ private fun CoffeeInDialog(
             Button(
                 onClick = {
                     textValue.toDoubleOrNull()?.let { value ->
-                        if (value in minValue.toDouble()..maxValue.toDouble()) {
+                        if (value in minValue..maxValue) {
                             onValueChange(value)
                             onDismiss()
                         }
@@ -1080,6 +1088,19 @@ private fun CoffeeInDialog(
             }
         }
     )
+}
+
+/**
+ * Steps the coffee-out weight by [delta] whole grams.
+ *
+ * Bounded only by the [Shot] domain limits - the user's basket configuration is a
+ * suggestion for what they usually pull, not a cap on what they may record.
+ */
+private fun steppedCoffeeWeightOut(currentValue: String, delta: Int): String {
+    val current = currentValue.toDoubleOrNull() ?: 0.0
+    val stepped = (current + delta)
+        .coerceIn(ValidationUtils.MIN_WEIGHT_ENTRY, Shot.MAX_COFFEE_WEIGHT_OUT)
+    return stepped.toInt().toString()
 }
 
 /**

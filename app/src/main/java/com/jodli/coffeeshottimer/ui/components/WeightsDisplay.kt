@@ -35,12 +35,13 @@ import com.jodli.coffeeshottimer.ui.theme.CoffeeShotTimerTheme
  *
  * Features:
  * - Coffee In: Tap to edit (opens dialog)
- * - Coffee Out: +/- buttons for quick 1g adjustments
- * - Brew ratio: Auto-calculated and color-coded (green when 1:1.5-2.5)
+ * - Coffee Out: Tap to edit (opens dialog), plus +/- buttons for quick 1g adjustments
+ * - Brew ratio: Auto-calculated and color-coded (highlighted in the optimal range)
  *
  * @param coffeeIn Coffee weight in (grams)
  * @param coffeeOut Coffee weight out (grams)
  * @param onCoffeeInClick Callback when coffee in is clicked (opens dialog)
+ * @param onCoffeeOutClick Callback when coffee out is clicked (opens dialog)
  * @param onCoffeeOutDecrease Callback to decrease coffee out by 1g
  * @param onCoffeeOutIncrease Callback to increase coffee out by 1g
  * @param modifier Modifier for the composable
@@ -50,13 +51,15 @@ fun WeightsDisplay(
     coffeeIn: Double,
     coffeeOut: Double,
     onCoffeeInClick: () -> Unit,
+    onCoffeeOutClick: () -> Unit,
     onCoffeeOutDecrease: () -> Unit,
     onCoffeeOutIncrease: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Calculate brew ratio
     val ratio = if (coffeeIn > 0) coffeeOut / coffeeIn else 0.0
-    val isOptimalRatio = ratio in 1.5..2.5
+    val isOptimalRatio = ratio in
+        ValidationUtils.OPTIMAL_BREW_RATIO_MIN..ValidationUtils.OPTIMAL_BREW_RATIO_MAX
 
     Surface(
         modifier = modifier,
@@ -98,12 +101,20 @@ fun WeightsDisplay(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // Coffee Out
+                // Coffee Out (tap to edit)
                 Text(
                     text = stringResource(R.string.format_weight_grams, coffeeOut.toInt()),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(onClick = onCoffeeOutClick)
+                        .background(
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                            RoundedCornerShape(4.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
 
                 // Ratio (calculated)
@@ -163,6 +174,7 @@ private fun WeightsDisplayPreview_Optimal() {
             coffeeIn = 18.0,
             coffeeOut = 36.0,
             onCoffeeInClick = {},
+            onCoffeeOutClick = {},
             onCoffeeOutDecrease = {},
             onCoffeeOutIncrease = {},
             modifier = Modifier
@@ -181,6 +193,7 @@ private fun WeightsDisplayPreview_Low() {
             coffeeIn = 18.0,
             coffeeOut = 22.0,
             onCoffeeInClick = {},
+            onCoffeeOutClick = {},
             onCoffeeOutDecrease = {},
             onCoffeeOutIncrease = {},
             modifier = Modifier
@@ -199,6 +212,7 @@ private fun WeightsDisplayPreview_High() {
             coffeeIn = 18.0,
             coffeeOut = 54.0,
             onCoffeeInClick = {},
+            onCoffeeOutClick = {},
             onCoffeeOutDecrease = {},
             onCoffeeOutIncrease = {},
             modifier = Modifier
@@ -217,6 +231,7 @@ private fun WeightsDisplayPreview_Dark() {
             coffeeIn = 18.0,
             coffeeOut = 36.0,
             onCoffeeInClick = {},
+            onCoffeeOutClick = {},
             onCoffeeOutDecrease = {},
             onCoffeeOutIncrease = {},
             modifier = Modifier

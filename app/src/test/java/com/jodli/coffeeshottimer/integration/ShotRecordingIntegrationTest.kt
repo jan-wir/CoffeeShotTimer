@@ -265,4 +265,58 @@ class ShotRecordingIntegrationTest {
         // And: Success message should not be set
         assertNull(viewModel.successMessage.value)
     }
+
+    @Test
+    fun `accepts extracted amount above the basket configuration maximum`() = runTest {
+        // Given: a weight well above the default basket coffeeOutMax of 55g, which used to
+        // cap the +/- stepper and made ratios beyond roughly 1:3 unreachable
+        viewModel.updateCoffeeWeightOut("80")
+
+        // Then: it is stored as typed and flagged as valid
+        assertEquals("80", viewModel.coffeeWeightOut.value)
+        assertNull(viewModel.coffeeWeightOutError.value)
+    }
+
+    @Test
+    fun `accepts coffee in above the basket configuration maximum`() = runTest {
+        viewModel.updateCoffeeWeightIn("35")
+
+        assertEquals("35", viewModel.coffeeWeightIn.value)
+        assertNull(viewModel.coffeeWeightInError.value)
+    }
+
+    @Test
+    fun `rejects extracted amount above the domain maximum`() = runTest {
+        every { stringResourceProvider.getString(any(), *anyVararg()) } returns "too high"
+
+        viewModel.updateCoffeeWeightOut("101")
+
+        assertEquals("too high", viewModel.coffeeWeightOutError.value)
+    }
+
+    @Test
+    fun `rejects extracted amount below one gram`() = runTest {
+        every { stringResourceProvider.getString(any(), *anyVararg()) } returns "too low"
+
+        viewModel.updateCoffeeWeightOut("0")
+
+        assertEquals("too low", viewModel.coffeeWeightOutError.value)
+    }
+
+    @Test
+    fun `rejects a non-numeric extracted amount`() = runTest {
+        every { stringResourceProvider.getString(any(), *anyVararg()) } returns "not a number"
+
+        viewModel.updateCoffeeWeightOut("abc")
+
+        assertEquals("not a number", viewModel.coffeeWeightOutError.value)
+    }
+
+    @Test
+    fun `treats a blank extracted amount as incomplete rather than invalid`() = runTest {
+        viewModel.updateCoffeeWeightOut("")
+
+        assertNull(viewModel.coffeeWeightOutError.value)
+        assertFalse(viewModel.isFormValid.value)
+    }
 }

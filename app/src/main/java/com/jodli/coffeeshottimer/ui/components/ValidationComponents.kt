@@ -65,6 +65,16 @@ class ValidationUtils(
         const val MAX_TYPICAL_BREW_RATIO = 3.0
         const val OPTIMAL_BREW_RATIO_MIN = 2.0
         const val OPTIMAL_BREW_RATIO_MAX = 2.5
+
+        /**
+         * Lowest coffee weight the shot recording UI accepts, in grams.
+         *
+         * The Shot domain minimum is 0.1g, but the stepper and keyboard dialogs work in
+         * whole grams, so 1g is the smallest value they can express. Upper bounds come
+         * straight from Shot.MAX_COFFEE_WEIGHT_IN / MAX_COFFEE_WEIGHT_OUT - the user's
+         * basket configuration is a suggestion and never caps entry.
+         */
+        const val MIN_WEIGHT_ENTRY = 1.0
     }
 
     // Time validation constants

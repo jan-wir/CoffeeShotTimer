@@ -2,12 +2,14 @@ package com.jodli.coffeeshottimer.ui.viewmodel
 
 import android.content.Context
 import android.os.SystemClock
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jodli.coffeeshottimer.BuildConfig
 import com.jodli.coffeeshottimer.R
 import com.jodli.coffeeshottimer.data.model.Bean
+import com.jodli.coffeeshottimer.data.model.Shot
 import com.jodli.coffeeshottimer.data.repository.BeanRepository
 import com.jodli.coffeeshottimer.data.repository.ShotRepository
 import com.jodli.coffeeshottimer.domain.model.GrindAdjustmentRecommendation
@@ -579,26 +581,63 @@ class ShotRecordingViewModel @Inject constructor(
 
     /**
      * Update coffee weight in.
-     * No validation needed as sliders constrain values to basket configuration ranges.
+     * Validated against the Shot domain limits, not the basket configuration - the basket
+     * range is a suggestion and must never block a shot the user actually pulled.
      */
     fun updateCoffeeWeightIn(value: String) {
         _coffeeWeightIn.value = value
-        _coffeeWeightInError.value = null // Clear any previous errors
+        _coffeeWeightInError.value = weightEntryError(
+            value = value,
+            maxWeight = Shot.MAX_COFFEE_WEIGHT_IN,
+            tooLowRes = R.string.validation_coffee_in_too_low,
+            tooHighRes = R.string.validation_coffee_in_too_high
+        )
 
         calculateBrewRatio()
         validateForm()
     }
 
     /**
-     * Update coffee weight out.
-     * No validation needed as sliders constrain values to basket configuration ranges.
+     * Update coffee weight out (the extracted amount).
+     * Validated against the Shot domain limits, not the basket configuration - the basket
+     * range is a suggestion and must never block a shot the user actually pulled.
      */
     fun updateCoffeeWeightOut(value: String) {
         _coffeeWeightOut.value = value
-        _coffeeWeightOutError.value = null // Clear any previous errors
+        _coffeeWeightOutError.value = weightEntryError(
+            value = value,
+            maxWeight = Shot.MAX_COFFEE_WEIGHT_OUT,
+            tooLowRes = R.string.validation_coffee_out_too_low,
+            tooHighRes = R.string.validation_coffee_out_too_high
+        )
 
         calculateBrewRatio()
         validateForm()
+    }
+
+    /**
+     * Validates a typed coffee weight, returning a localized error or null when acceptable.
+     * A blank value is not an error here - [validateForm] already treats it as incomplete.
+     */
+    private fun weightEntryError(
+        value: String,
+        maxWeight: Double,
+        @StringRes tooLowRes: Int,
+        @StringRes tooHighRes: Int
+    ): String? {
+        if (value.isBlank()) return null
+        val weight = value.toDoubleOrNull()
+            ?: return stringResourceProvider.getString(R.string.validation_invalid_number)
+
+        return when {
+            weight < ValidationUtils.MIN_WEIGHT_ENTRY -> stringResourceProvider.getString(
+                tooLowRes,
+                ValidationUtils.MIN_WEIGHT_ENTRY.toInt()
+            )
+
+            weight > maxWeight -> stringResourceProvider.getString(tooHighRes, maxWeight.toInt())
+            else -> null
+        }
     }
 
     /**
@@ -968,9 +1007,10 @@ class ShotRecordingViewModel @Inject constructor(
                     val maxDraftAge = 24 * 60 * 60 * 1000L // 24 hours in milliseconds
 
                     if (draftAge <= maxDraftAge) {
-                        // Restore form data
-                        _coffeeWeightIn.value = draft.coffeeWeightIn
-                        _coffeeWeightOut.value = draft.coffeeWeightOut
+                        // Restore form data (through the setters so restored values are
+                        // validated - a draft can predate a change in what is acceptable)
+                        updateCoffeeWeightIn(draft.coffeeWeightIn)
+                        updateCoffeeWeightOut(draft.coffeeWeightOut)
                         _grinderSetting.value = draft.grinderSetting
                         _notes.value = draft.notes
 

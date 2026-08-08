@@ -57,18 +57,18 @@ data class Shot(
     fun validate(): ValidationResult {
         val errors = mutableListOf<String>()
 
-        // Validate coffee weight in (0.1g - 50.0g range)
-        if (coffeeWeightIn < 0.1) {
-            errors.add("Coffee input weight must be at least 0.1g")
-        } else if (coffeeWeightIn > 50.0) {
-            errors.add("Coffee input weight cannot exceed 50.0g")
+        // Validate coffee weight in
+        if (coffeeWeightIn < MIN_COFFEE_WEIGHT_IN) {
+            errors.add("Coffee input weight must be at least ${MIN_COFFEE_WEIGHT_IN}g")
+        } else if (coffeeWeightIn > MAX_COFFEE_WEIGHT_IN) {
+            errors.add("Coffee input weight cannot exceed ${MAX_COFFEE_WEIGHT_IN}g")
         }
 
-        // Validate coffee weight out (0.1g - 100.0g range)
-        if (coffeeWeightOut < 0.1) {
-            errors.add("Coffee output weight must be at least 0.1g")
-        } else if (coffeeWeightOut > 100.0) {
-            errors.add("Coffee output weight cannot exceed 100.0g")
+        // Validate coffee weight out
+        if (coffeeWeightOut < MIN_COFFEE_WEIGHT_OUT) {
+            errors.add("Coffee output weight must be at least ${MIN_COFFEE_WEIGHT_OUT}g")
+        } else if (coffeeWeightOut > MAX_COFFEE_WEIGHT_OUT) {
+            errors.add("Coffee output weight cannot exceed ${MAX_COFFEE_WEIGHT_OUT}g")
         }
 
         // Validate extraction time (5 - 120 seconds)
@@ -136,5 +136,19 @@ data class Shot(
                 String.format(java.util.Locale.ROOT, "%02d:%02d", minutes, seconds)
             }
         }
+    }
+
+    companion object {
+        /**
+         * Absolute weight bounds a shot may be recorded with, in grams.
+         *
+         * These are the only hard limits on shot weights. The user's [BasketConfiguration]
+         * range is a suggestion used to seed defaults and drive warnings - it never blocks
+         * entry, since a user may legitimately pull a shot outside their usual basket range.
+         */
+        const val MIN_COFFEE_WEIGHT_IN = 0.1
+        const val MAX_COFFEE_WEIGHT_IN = 50.0
+        const val MIN_COFFEE_WEIGHT_OUT = 0.1
+        const val MAX_COFFEE_WEIGHT_OUT = 100.0
     }
 }
