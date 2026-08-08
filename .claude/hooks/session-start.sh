@@ -28,6 +28,12 @@ if [ -z "$COMPILE_SDK" ]; then
 fi
 BUILD_TOOLS="$COMPILE_SDK.0.0"
 
+# Resolving the unit test task graph asks for build-tools 35 on top of the one
+# matching compileSdk, before any task runs. Gradle would fetch it itself since
+# the licenses below are accepted, but only once a test is already running and
+# after the container image has been cached — so pre-install it here instead.
+EXTRA_BUILD_TOOLS="35.0.0"
+
 if [ ! -x "$SDKMANAGER" ]; then
   echo "session-start: installing Android command line tools"
   tmp="$(mktemp -d)"
@@ -48,11 +54,12 @@ export ANDROID_HOME ANDROID_SDK_ROOT="$ANDROID_HOME"
 # run and is a no-op once the accepted-license hashes are on disk.
 yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null || true
 
-echo "session-start: installing platform $COMPILE_SDK / build-tools $BUILD_TOOLS"
+echo "session-start: installing platform $COMPILE_SDK / build-tools $BUILD_TOOLS $EXTRA_BUILD_TOOLS"
 "$SDKMANAGER" --install \
   "platform-tools" \
   "platforms;android-$COMPILE_SDK" \
-  "build-tools;$BUILD_TOOLS" > /dev/null
+  "build-tools;$BUILD_TOOLS" \
+  "build-tools;$EXTRA_BUILD_TOOLS" > /dev/null
 
 # local.properties is gitignored, so it has to be regenerated each session.
 echo "sdk.dir=$ANDROID_HOME" > "$PROJECT_DIR/local.properties"
