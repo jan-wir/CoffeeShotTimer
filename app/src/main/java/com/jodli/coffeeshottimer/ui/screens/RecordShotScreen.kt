@@ -182,36 +182,18 @@ fun RecordShotScreen(
 
     // Coffee In adjustment dialog
     if (showCoffeeInDialog) {
-        WeightInputDialog(
-            titleRes = R.string.dialog_adjust_coffee_in,
-            descriptionRes = R.string.text_enter_coffee_in_amount,
-            labelRes = R.string.label_coffee_in,
-            tooLowRes = R.string.validation_coffee_in_too_low,
-            tooHighRes = R.string.validation_coffee_in_too_high,
+        CoffeeInDialog(
             currentValue = coffeeWeightIn.toDoubleOrNull() ?: basketCoffeeInMin.toDouble(),
-            minValue = ValidationUtils.MIN_WEIGHT_ENTRY,
-            maxValue = Shot.MAX_COFFEE_WEIGHT_IN,
-            onValueChange = { newValue ->
-                viewModel.updateCoffeeWeightIn(newValue.toInt().toString())
-            },
+            onValueChange = { viewModel.updateCoffeeWeightIn(it.toInt().toString()) },
             onDismiss = { showCoffeeInDialog = false }
         )
     }
 
     // Coffee Out adjustment dialog
     if (showCoffeeOutDialog) {
-        WeightInputDialog(
-            titleRes = R.string.dialog_adjust_coffee_out,
-            descriptionRes = R.string.text_enter_coffee_out_amount,
-            labelRes = R.string.label_coffee_out,
-            tooLowRes = R.string.validation_coffee_out_too_low,
-            tooHighRes = R.string.validation_coffee_out_too_high,
+        CoffeeOutDialog(
             currentValue = coffeeWeightOut.toDoubleOrNull() ?: basketCoffeeOutMin.toDouble(),
-            minValue = ValidationUtils.MIN_WEIGHT_ENTRY,
-            maxValue = Shot.MAX_COFFEE_WEIGHT_OUT,
-            onValueChange = { newValue ->
-                viewModel.updateCoffeeWeightOut(newValue.toInt().toString())
-            },
+            onValueChange = { viewModel.updateCoffeeWeightOut(it.toInt().toString()) },
             onDismiss = { showCoffeeOutDialog = false }
         )
     }
@@ -991,6 +973,52 @@ private fun GrinderAdjustmentBottomSheet(
             }
         }
     }
+}
+
+/**
+ * Coffee In adjustment dialog.
+ */
+@Composable
+private fun CoffeeInDialog(
+    currentValue: Double,
+    onValueChange: (Double) -> Unit,
+    onDismiss: () -> Unit
+) {
+    WeightInputDialog(
+        titleRes = R.string.dialog_adjust_coffee_in,
+        descriptionRes = R.string.text_enter_coffee_in_amount,
+        labelRes = R.string.label_coffee_in,
+        tooLowRes = R.string.validation_coffee_in_too_low,
+        tooHighRes = R.string.validation_coffee_in_too_high,
+        currentValue = currentValue,
+        minValue = ValidationUtils.MIN_WEIGHT_ENTRY,
+        maxValue = Shot.MAX_COFFEE_WEIGHT_IN,
+        onValueChange = onValueChange,
+        onDismiss = onDismiss
+    )
+}
+
+/**
+ * Coffee Out (extracted amount) adjustment dialog.
+ */
+@Composable
+private fun CoffeeOutDialog(
+    currentValue: Double,
+    onValueChange: (Double) -> Unit,
+    onDismiss: () -> Unit
+) {
+    WeightInputDialog(
+        titleRes = R.string.dialog_adjust_coffee_out,
+        descriptionRes = R.string.text_enter_coffee_out_amount,
+        labelRes = R.string.label_coffee_out,
+        tooLowRes = R.string.validation_coffee_out_too_low,
+        tooHighRes = R.string.validation_coffee_out_too_high,
+        currentValue = currentValue,
+        minValue = ValidationUtils.MIN_WEIGHT_ENTRY,
+        maxValue = Shot.MAX_COFFEE_WEIGHT_OUT,
+        onValueChange = onValueChange,
+        onDismiss = onDismiss
+    )
 }
 
 /**

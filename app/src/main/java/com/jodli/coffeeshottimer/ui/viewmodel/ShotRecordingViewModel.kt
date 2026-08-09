@@ -626,10 +626,10 @@ class ShotRecordingViewModel @Inject constructor(
         @StringRes tooHighRes: Int
     ): String? {
         if (value.isBlank()) return null
-        val weight = value.toDoubleOrNull()
-            ?: return stringResourceProvider.getString(R.string.validation_invalid_number)
 
+        val weight = value.toDoubleOrNull()
         return when {
+            weight == null -> stringResourceProvider.getString(R.string.validation_invalid_number)
             weight < ValidationUtils.MIN_WEIGHT_ENTRY -> stringResourceProvider.getString(
                 tooLowRes,
                 ValidationUtils.MIN_WEIGHT_ENTRY.toInt()
