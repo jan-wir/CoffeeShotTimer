@@ -35,7 +35,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Test
 import java.time.LocalDate
 
@@ -124,6 +123,17 @@ class ShotRecordingIntegrationTest {
         // Mock the new grinder setting suggestion method I added
         coEvery { recordShotUseCase.getSuggestedGrinderSetting(any()) } returns Result.success("15")
 
+        // Returns Result<Shot?>, so a relaxed mock hands back a bare Object and selectBean()
+        // dies with ClassCastException when it reads lastShot.coffeeWeightIn.
+        coEvery { shotRepository.getLastShotForBean(any()) } returns Result.success(null)
+
+        // loadPreviousSuccessfulSettings() calls .first() on this flow; a relaxed mock returns
+        // an empty flow, which throws NoSuchElementException.
+        every { shotRepository.getShotsByBean(any()) } returns flowOf(Result.success(emptyList()))
+
+        // Result<PersistentGrindRecommendation?> - same relaxed-mock ClassCastException as above.
+        coEvery { manageGrindRecommendationUseCase.getRecommendation(any()) } returns Result.success(null)
+
         // Mock grinder configuration repository to return default config
         coEvery {
             grinderConfigRepository.getOrCreateDefaultConfig()
@@ -145,6 +155,25 @@ class ShotRecordingIntegrationTest {
         coEvery { recordShotUseCase.recordShotWithCurrentTimer(any(), any(), any(), any(), any()) } returns
             Result.success(testShot)
 
+        // recordShot() actually calls this overload, not recordShotWithCurrentTimer.
+        coEvery { recordShotUseCase.recordShot(any(), any(), any(), any(), any(), any()) } returns
+            Result.success(testShot)
+
+        // Drives the post-recording dialog. Only shotDetails.analysis.recommendations is read,
+        // so a relaxed mock is enough; without it the Result<ShotDetails> is a bare Object.
+        coEvery { getShotDetailsUseCase.getShotDetails(any()) } returns Result.success(mockk(relaxed = true))
+
+        // Called once the dialog is up, to seed the grind recommendation.
+        coEvery { calculateGrindAdjustmentUseCase.calculateAdjustment(any(), any(), any()) } returns
+            Result.success(mockk(relaxed = true))
+
+        // Read back when persisting that recommendation. Returns Result<Shot?>.
+        coEvery { shotRepository.getShotById(any()) } returns Result.success(testShot)
+
+        // Persists it. Returns Result<PersistentGrindRecommendation>.
+        coEvery { manageGrindRecommendationUseCase.saveRecommendation(any(), any(), any()) } returns
+            Result.success(mockk(relaxed = true))
+
         // Create ViewModel
         viewModel = ShotRecordingViewModel(
             recordShotUseCase,
@@ -162,6 +191,12 @@ class ShotRecordingIntegrationTest {
             context,
             androidx.lifecycle.SavedStateHandle()
         )
+
+        // The ViewModel's init starts two `while (isActive) { delay(...) }` loops (periodic
+        // timer updates and draft auto-save). They never complete, so the test scheduler is
+        // never idle and runTest would advance virtual time forever instead of finishing.
+        // Cancelling them here is what lets these tests use advanceTimeBy at all.
+        viewModel.cancelPeriodicJobs()
     }
 
     @After
@@ -170,7 +205,6 @@ class ShotRecordingIntegrationTest {
     }
 
     @Test
-    @Ignore("somewhere there's a race condition in the recordShot() fun.")
     fun `should save draft to SharedPreferences when form has data`() = runTest {
         // Given: Form has some data
         viewModel.updateCoffeeWeightIn("18.0")
@@ -187,8 +221,7 @@ class ShotRecordingIntegrationTest {
     }
 
     @Test
-    @Ignore("somewhere there's a race condition in the recordShot() fun.")
-    fun `should show success message after successful shot recording`() = runTest {
+    fun `should show the shot recorded dialog after successful shot recording`() = runTest {
         // Given: Valid form data
         viewModel.updateCoffeeWeightIn("18.0")
         viewModel.updateCoffeeWeightOut("36.0")
@@ -207,14 +240,17 @@ class ShotRecordingIntegrationTest {
         viewModel.recordShot()
         testDispatcher.scheduler.advanceTimeBy(1000)
 
-        // Then: Success message should be set
-        assertNotNull(viewModel.successMessage.value)
-        assertTrue(viewModel.successMessage.value!!.contains("Shot recorded successfully"))
-        assertTrue(viewModel.successMessage.value!!.contains("1:2.0")) // Brew ratio
+        // Then: The shot recorded dialog is shown with the brew ratio.
+        // Note: successMessage is NOT set on this path any more - it survives only as the
+        // fallback for when loading shot details fails, which is why this test asserted it
+        // originally.
+        assertTrue(viewModel.showShotRecordedDialog.value)
+        assertNotNull(viewModel.recordedShotData.value)
+        assertEquals("1:2.0", viewModel.recordedShotData.value!!.brewRatio)
+        assertNull(viewModel.errorMessage.value)
     }
 
     @Test
-    @Ignore("somewhere there's a race condition in the recordShot() fun.")
     fun `should clear draft after successful shot recording`() = runTest {
         // Given: Form has data and draft exists
         viewModel.updateCoffeeWeightIn("18.0")
@@ -240,7 +276,6 @@ class ShotRecordingIntegrationTest {
     }
 
     @Test
-    @Ignore("somewhere there's a race condition in the recordShot() fun.")
     fun `should handle validation errors gracefully`() = runTest {
         // Given: Invalid form data and validation failure
         coEvery { recordShotUseCase.validateShotParameters(any(), any(), any(), any(), any(), any()) } returns
