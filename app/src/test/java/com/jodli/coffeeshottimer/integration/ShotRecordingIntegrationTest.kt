@@ -266,8 +266,13 @@ class ShotRecordingIntegrationTest {
         assertNull(viewModel.successMessage.value)
     }
 
+    // Weight entry tests. These deliberately do NOT use runTest: the ViewModel keeps a
+    // perpetual `while (isActive) { delay(...) }` coroutine on Dispatchers.Main, so runTest
+    // would advance virtual time forever and hang instead of finishing. The functions under
+    // test are synchronous, so asserting on the StateFlow values directly is enough.
+
     @Test
-    fun `accepts extracted amount above the basket configuration maximum`() = runTest {
+    fun `accepts extracted amount above the basket configuration maximum`() {
         // Given: a weight well above the default basket coffeeOutMax of 55g, which used to
         // cap the +/- stepper and made ratios beyond roughly 1:3 unreachable
         viewModel.updateCoffeeWeightOut("80")
@@ -278,7 +283,7 @@ class ShotRecordingIntegrationTest {
     }
 
     @Test
-    fun `accepts coffee in above the basket configuration maximum`() = runTest {
+    fun `accepts coffee in above the basket configuration maximum`() {
         viewModel.updateCoffeeWeightIn("35")
 
         assertEquals("35", viewModel.coffeeWeightIn.value)
@@ -286,7 +291,7 @@ class ShotRecordingIntegrationTest {
     }
 
     @Test
-    fun `rejects extracted amount above the domain maximum`() = runTest {
+    fun `rejects extracted amount above the domain maximum`() {
         every { stringResourceProvider.getString(any(), *anyVararg()) } returns "too high"
 
         viewModel.updateCoffeeWeightOut("101")
@@ -295,7 +300,7 @@ class ShotRecordingIntegrationTest {
     }
 
     @Test
-    fun `rejects extracted amount below one gram`() = runTest {
+    fun `rejects extracted amount below one gram`() {
         every { stringResourceProvider.getString(any(), *anyVararg()) } returns "too low"
 
         viewModel.updateCoffeeWeightOut("0")
@@ -304,7 +309,7 @@ class ShotRecordingIntegrationTest {
     }
 
     @Test
-    fun `rejects a non-numeric extracted amount`() = runTest {
+    fun `rejects a non-numeric extracted amount`() {
         every { stringResourceProvider.getString(any(), *anyVararg()) } returns "not a number"
 
         viewModel.updateCoffeeWeightOut("abc")
@@ -313,7 +318,7 @@ class ShotRecordingIntegrationTest {
     }
 
     @Test
-    fun `treats a blank extracted amount as incomplete rather than invalid`() = runTest {
+    fun `treats a blank extracted amount as incomplete rather than invalid`() {
         viewModel.updateCoffeeWeightOut("")
 
         assertNull(viewModel.coffeeWeightOutError.value)
