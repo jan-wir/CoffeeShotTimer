@@ -310,7 +310,8 @@ class ShotRecordingIntegrationTest {
 
     @Test
     fun `rejects a non-numeric extracted amount`() {
-        every { stringResourceProvider.getString(any(), *anyVararg()) } returns "not a number"
+        // This path uses the no-format-args overload, not the vararg one
+        every { stringResourceProvider.getString(any()) } returns "not a number"
 
         viewModel.updateCoffeeWeightOut("abc")
 
