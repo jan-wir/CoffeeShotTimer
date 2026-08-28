@@ -2,6 +2,7 @@ package com.jodli.coffeeshottimer.ui.viewmodel
 
 import android.content.Context
 import android.os.SystemClock
+import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -1544,14 +1545,30 @@ class ShotRecordingViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Cancels the two periodic background jobs started in [init].
+     *
+     * Both are `while (isActive) { delay(...) }` loops that never complete on their own.
+     * Under `runTest` they keep the test scheduler permanently non-idle, so virtual time is
+     * advanced forever and the test hangs instead of finishing. Tests that need to drive
+     * coroutines (`advanceTimeBy`, `advanceUntilIdle`) must call this right after
+     * constructing the ViewModel; tests that only assert on StateFlow values need not.
+     *
+     * Production code cancels the same jobs via [onCleared].
+     */
+    @VisibleForTesting
+    internal fun cancelPeriodicJobs() {
+        timerUpdateJob?.cancel()
+        autoSaveDraftJob?.cancel()
+    }
+
     override fun onCleared() {
         super.onCleared()
 
         // Save timer state before clearing
         saveTimerState()
 
-        timerUpdateJob?.cancel()
-        autoSaveDraftJob?.cancel()
+        cancelPeriodicJobs()
 
         // Save draft before clearing
         viewModelScope.launch {
